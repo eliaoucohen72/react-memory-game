@@ -1,15 +1,6 @@
 import { useState, useEffect } from "react";
 import "./App.css";
-import img1 from "./assets/1.png";
-import img2 from "./assets/2.png";
-import img3 from "./assets/3.png";
-import img4 from "./assets/4.png";
-import img5 from "./assets/5.png";
-import img6 from "./assets/6.png";
-import img7 from "./assets/7.png";
-import img8 from "./assets/8.png";
-
-const images = [img1, img2, img3, img4, img5, img6, img7, img8];
+import imagesPromise from "./assets";
 
 type Card = {
   id: number;
@@ -18,8 +9,11 @@ type Card = {
   isMatched: boolean;
 };
 
-function shuffleCards(): Card[] {
-  const doubledImages = [...images, ...images];
+const initialImageCount = 2;
+
+function shuffleCards(images: string[], imageCount: number): Card[] {
+  const selectedImages = images.slice(0, imageCount);
+  const doubledImages = [...selectedImages, ...selectedImages];
   const shuffled = doubledImages
     .map((src, index) => ({
       id: index,
@@ -36,10 +30,23 @@ function App() {
   const [firstCard, setFirstCard] = useState<Card | null>(null);
   const [secondCard, setSecondCard] = useState<Card | null>(null);
   const [disabled, setDisabled] = useState(false);
+  const [successCount, setSuccessCount] = useState(0);
+  const [matchedPairs, setMatchedPairs] = useState(0); // Keep track of matched pairs for the current level
+  const [images, setImages] = useState<string[]>([]);
 
   useEffect(() => {
-    setCards(shuffleCards());
+    imagesPromise.then((loadedImages) => {
+      setImages(Object.values(loadedImages));
+    });
   }, []);
+
+  useEffect(() => {
+    if (images.length > 0) {
+      const imageCount = initialImageCount + successCount * 2;
+      setCards(shuffleCards(images, imageCount));
+      setMatchedPairs(0); // Reset matched pairs count when level changes
+    }
+  }, [successCount, images]);
 
   const handleCardClick = (card: Card) => {
     if (disabled || card.isFlipped || card.isMatched) return;
@@ -62,6 +69,13 @@ function App() {
             c.src === card.src ? { ...c, isMatched: true } : c
           )
         );
+        setMatchedPairs((prev) => prev + 1); // Increment the matched pairs count
+
+        // Check if all pairs are matched for the current level
+        if (matchedPairs + 1 === cards.length / 2) {
+          setSuccessCount((prevCount) => prevCount + 1); // Move to next level
+        }
+
         resetTurn();
       } else {
         setTimeout(() => {
@@ -87,7 +101,7 @@ function App() {
   return (
     <div className="container">
       <div className="title">Memory game</div>
-      <div className="button" onClick={() => setCards(shuffleCards())}>
+      <div className="button" onClick={() => setSuccessCount(0)}>
         New game
       </div>
       <div className="board">
